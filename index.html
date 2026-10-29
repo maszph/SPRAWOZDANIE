@@ -88,6 +88,27 @@
     .staff-fixed-func { font-weight: 600; font-size: 0.85rem; color: #2d3748; }
     .staff-row input { margin: 0; font-size: 0.85rem; padding: 5px 7px; }
 
+    /* licznik składu / rezerwowych */
+    .counter-bar {
+      position: sticky; top: 0; z-index: 5;
+      display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+      background: white; padding: 8px 0 10px; margin-bottom: 6px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .badge {
+      display: inline-flex; align-items: baseline; gap: 6px;
+      padding: 6px 12px; border-radius: 999px;
+      font-size: 0.85rem; font-weight: 600;
+      background: #edf2f7; color: #2d3748; border: 1px solid #cbd5e0;
+    }
+    .badge .num { font-size: 1.1rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .badge.full { background: #c6f6d5; border-color: #68d391; color: #22543d; }
+    .badge.partial { background: #fefcbf; border-color: #ecc94b; color: #744210; }
+    .counter-msg { font-size: 0.82rem; color: #c53030; font-weight: 600; min-height: 1.1em; flex-basis: 100%; }
+    .players-table tr.is-sklad { background: #ebf8ff; }
+    .players-table tr.is-rez { background: #f0fff4; }
+    .check-col input:disabled { cursor: not-allowed; opacity: .35; }
+
     .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
     button {
       padding: 10px 20px; border: none; border-radius: 8px;
@@ -205,7 +226,7 @@
 
     <div id="formularz">
       <h1>Protokół meczowy – DKS Czarni Kozłowa Góra</h1>
-      <p class="subtitle">III liga wojewódzka B1 Junior Młodszy • Max 11 w składzie • Max 1 BR w składzie</p>
+      <p class="subtitle">III liga wojewódzka B1 Junior Młodszy • Skład: dokładnie 11 • Rezerwowi: max 9 • Max 1 BR w składzie</p>
 
       <div class="card">
         <h2>1. Dane meczu</h2>
@@ -232,12 +253,15 @@
         <h2>2. Zawodnicy</h2>
         <p class="hint" style="margin-bottom:8px">
           <b>Na meczu</b> – zawodnik w protokole<br>
-          <b>Skład</b> – podstawowy (max <b>11</b>). Bez „Skład” → rezerwa<br>
+          <b>Skład</b> – podstawowy (dokładnie <b>11</b>). Bez „Skład” → rezerwowy (max <b>9</b>)<br>
           <b>BR</b> – bramkarz. W składzie podstawowym może być <b>tylko 1</b> BR. W rezerwie dowolna liczba.<br>
           <b>K</b> – kapitan (tylko jeden)
         </p>
-        <div id="warnSklad" class="warn">Uwaga: w składzie podstawowym może być maksymalnie 11 zawodników!</div>
-        <div id="warnBR" class="warn">Uwaga: w składzie podstawowym może być maksymalnie 1 bramkarz!</div>
+        <div class="counter-bar">
+          <span id="badgeSklad" class="badge"><span>Skład</span> <span class="num">0/11</span></span>
+          <span id="badgeRez" class="badge"><span>Rezerwowi</span> <span class="num">0/9</span></span>
+          <span id="counterMsg" class="counter-msg"></span>
+        </div>
         <div style="overflow-x:auto; max-height: 440px; overflow-y:auto;">
           <table class="players-table">
             <thead>
@@ -255,8 +279,7 @@
           </table>
         </div>
         <div class="btn-row" style="margin-top:8px">
-          <button type="button" class="btn-secondary" onclick="zaznaczWszystkich(true)">Zaznacz wszystkich</button>
-          <button type="button" class="btn-secondary" onclick="zaznaczWszystkich(false)">Odznacz wszystkich</button>
+          <button type="button" class="btn-secondary" onclick="wyczyscWybor()">Wyczyść wybór</button>
         </div>
       </div>
 
@@ -434,162 +457,189 @@
   </div>
 
   <script>
+    const MAX_SKLAD = 11;
+    const MAX_REZ = 9;
+
+    // Lista wg dokumentu „Lista podstawowa/uzupełniająca zawodników potwierdzonych i uprawnionych do gry”
+    // (data urodzenia w formacie dd-mm-rrrr). Numeracja Lp. liczona automatycznie.
     const zawodnicy = [
-      { lp: 1,  nazwisko: "BAJGER",            imie: "MATEUSZ",     dob: "29-10-2013" },
-      { lp: 2,  nazwisko: "BIAŁAS",            imie: "JAKUB",       dob: "26-02-2010" },
-      { lp: 3,  nazwisko: "CZYSZOŃ",           imie: "MATEUSZ",     dob: "25-06-2010" },
-      { lp: 4,  nazwisko: "DIKTA",             imie: "JAKUB",       dob: "26-06-2013" },
-      { lp: 5,  nazwisko: "GAJOWSKI",          imie: "KACPER",      dob: "27-08-2013" },
-      { lp: 6,  nazwisko: "GAJOWSKI",          imie: "PIOTR",       dob: "03-07-2013" },
-      { lp: 7,  nazwisko: "HECZKO-WRÓBLEWSKI", imie: "DAWID",       dob: "07-04-2012" },
-      { lp: 8,  nazwisko: "HOJKA",             imie: "FILIP",       dob: "20-10-2011" },
-      { lp: 9,  nazwisko: "HORZELA",           imie: "FILIP",       dob: "27-02-2013" },
-      { lp: 10, nazwisko: "JARZĘBAK",          imie: "KSAWERY",     dob: "20-12-2012" },
-      { lp: 11, nazwisko: "JUCHNIK",           imie: "BARTOSZ",     dob: "19-06-2012" },
-      { lp: 12, nazwisko: "KLYMENKO",          imie: "ROSTYSLAW",   dob: "24-11-2012" },
-      { lp: 13, nazwisko: "KOSOWSKI",          imie: "MIKOŁAJ",     dob: "14-03-2010" },
-      { lp: 14, nazwisko: "LUBOSIK",           imie: "FRANCISZEK",  dob: "22-07-2013" },
-      { lp: 15, nazwisko: "MACHTYCZ",          imie: "SZYMON",      dob: "05-12-2012" },
-      { lp: 16, nazwisko: "MILLER",            imie: "MIŁOSZ",      dob: "07-09-2012" },
-      { lp: 17, nazwisko: "MŁOKOSIEWICZ",      imie: "NIKODEM",     dob: "24-01-2013" },
-      { lp: 18, nazwisko: "MUSIALIK",          imie: "MICHAŁ",      dob: "25-11-2011" },
-      { lp: 19, nazwisko: "NEHREBECKI",        imie: "MACIEJ",      dob: "09-04-2013" },
-      { lp: 20, nazwisko: "NIERADA",           imie: "SZYMON",      dob: "25-02-2010" },
-      { lp: 21, nazwisko: "SOLORZ",            imie: "FILIP",       dob: "17-06-2013" },
-      { lp: 22, nazwisko: "SZASTOK",           imie: "PIOTR",       dob: "06-04-2010" },
-      { lp: 23, nazwisko: "SZUDY",             imie: "WOJCIECH",    dob: "17-10-2010" },
-      { lp: 24, nazwisko: "SZYDŁOWSKI",        imie: "MATEUSZ",     dob: "12-01-2012" },
-      { lp: 25, nazwisko: "TWARDOCH",          imie: "PATRYK",      dob: "21-11-2012" },
-      { lp: 26, nazwisko: "WAWRZYNIAK",        imie: "KAROL",       dob: "13-04-2010" }
+      { nazwisko: "BAJGER",            imie: "MATEUSZ",     dob: "29-10-2013" },
+      { nazwisko: "BIAŁAS",            imie: "JAKUB",       dob: "26-02-2010" },
+      { nazwisko: "CZYSZOŃ",           imie: "MATEUSZ",     dob: "25-06-2010" },
+      { nazwisko: "DIKTA",             imie: "JAKUB",       dob: "26-06-2013" },
+      { nazwisko: "GAJOWSKI",          imie: "KACPER",      dob: "27-08-2013" },
+      { nazwisko: "GAJOWSKI",          imie: "PIOTR",       dob: "03-07-2013" },
+      { nazwisko: "HECZKO-WRÓBLEWSKI", imie: "DAWID",       dob: "07-04-2012" },
+      { nazwisko: "HOJKA",             imie: "FILIP",       dob: "20-10-2011" },
+      { nazwisko: "HORZELA",           imie: "FILIP",       dob: "27-02-2013" },
+      { nazwisko: "JARZĘBAK",          imie: "KSAWERY",     dob: "20-12-2012" },
+      { nazwisko: "JUCHNIK",           imie: "BARTOSZ",     dob: "19-06-2012" },
+      { nazwisko: "KARCH",             imie: "TYCJAN",      dob: "10-05-2013" },
+      { nazwisko: "KLYMENKO",          imie: "ROSTYSLAW",   dob: "24-11-2012" },
+      { nazwisko: "KOSOWSKI",          imie: "MIKOŁAJ",     dob: "14-03-2010" },
+      { nazwisko: "LUBOSIK",           imie: "FRANCISZEK",  dob: "22-07-2013" },
+      { nazwisko: "LUDYGA",            imie: "MIKOŁAJ",     dob: "27-01-2014" },
+      { nazwisko: "ŁUCZYŃSKI",         imie: "FRANCISZEK",  dob: "18-05-2011" },
+      { nazwisko: "MACHTYCZ",          imie: "SZYMON",      dob: "05-12-2012" },
+      { nazwisko: "MILLER",            imie: "MIŁOSZ",      dob: "07-09-2012" },
+      { nazwisko: "MŁOKOSIEWICZ",      imie: "NIKODEM",     dob: "24-01-2013" },
+      { nazwisko: "MUSIALIK",          imie: "MICHAŁ",      dob: "25-11-2011" },
+      { nazwisko: "NEHREBECKI",        imie: "MACIEJ",      dob: "09-04-2013" },
+      { nazwisko: "NIERADA",           imie: "SZYMON",      dob: "25-02-2010" },
+      { nazwisko: "SOLORZ",            imie: "FILIP",       dob: "17-06-2013" },
+      { nazwisko: "SZASTOK",           imie: "PIOTR",       dob: "06-04-2010" },
+      { nazwisko: "SZUDY",             imie: "WOJCIECH",    dob: "17-10-2010" },
+      { nazwisko: "SZYDŁOWSKI",        imie: "MATEUSZ",     dob: "12-01-2012" },
+      { nazwisko: "TOMYS",             imie: "JAKUB",       dob: "13-09-2013" },
+      { nazwisko: "TWARDOCH",          imie: "PATRYK",      dob: "21-11-2012" },
+      { nazwisko: "WAWRZYNIAK",        imie: "KAROL",       dob: "13-04-2010" }
     ];
+
+    // Jedno źródło prawdy: stan w pamięci (nie odczyt z checkboxów)
+    // na = jest w protokole, sklad = podstawowy skład, br = bramkarz, k = kapitan
+    const stan = zawodnicy.map(() => ({ na: false, sklad: false, br: false, k: false }));
+
+    const cSklad = () => stan.filter(s => s.na && s.sklad).length;
+    const cRez   = () => stan.filter(s => s.na && !s.sklad).length;
+    const cBRSklad = () => stan.filter(s => s.na && s.sklad && s.br).length;
+
+    let msgTimer = null;
+    function komunikat(tekst) {
+      const el = document.getElementById('counterMsg');
+      el.textContent = tekst;
+      clearTimeout(msgTimer);
+      msgTimer = setTimeout(() => { el.textContent = ''; }, 4500);
+    }
 
     function renderPlayers() {
       const tbody = document.getElementById('playersBody');
       tbody.innerHTML = '';
       zawodnicy.forEach((z, i) => {
         const tr = document.createElement('tr');
+        tr.id = `row-${i}`;
         tr.innerHTML = `
-          <td style="text-align:center">${z.lp}</td>
+          <td style="text-align:center">${i + 1}</td>
           <td class="name-col">${z.nazwisko} ${z.imie}</td>
           <td class="dob-col">${z.dob}</td>
-          <td class="check-col">
-            <label>
-              <input type="checkbox" id="na-${i}" onchange="onNaChange(${i})">
-              <span>na meczu</span>
-            </label>
-          </td>
-          <td class="check-col">
-            <label>
-              <input type="checkbox" id="sklad-${i}" onchange="onSkladChange(${i})">
-              <span>skład</span>
-            </label>
-          </td>
-          <td class="check-col">
-            <label>
-              <input type="checkbox" id="br-${i}" onchange="onBRChange(${i})">
-              <span>BR</span>
-            </label>
-          </td>
-          <td class="check-col">
-            <label>
-              <input type="checkbox" id="k-${i}" onchange="onKChange(${i})">
-              <span>K</span>
-            </label>
-          </td>
+          <td class="check-col"><label><input type="checkbox" id="na-${i}" onchange="onNa(${i}, this.checked)"><span>na meczu</span></label></td>
+          <td class="check-col"><label><input type="checkbox" id="sklad-${i}" onchange="onSklad(${i}, this.checked)"><span>skład</span></label></td>
+          <td class="check-col"><label><input type="checkbox" id="br-${i}" onchange="onBR(${i}, this.checked)"><span>BR</span></label></td>
+          <td class="check-col"><label><input type="checkbox" id="k-${i}" onchange="onK(${i}, this.checked)"><span>K</span></label></td>
         `;
         tbody.appendChild(tr);
       });
+      odswiez();
     }
 
-    function countSklad() {
-      let c = 0;
-      zawodnicy.forEach((_, i) => {
-        if (document.getElementById(`sklad-${i}`).checked) c++;
+    // Synchronizuje cały widok ze stanem: checkboxy, blokady, kolory wierszy, liczniki
+    function odswiez() {
+      const sk = cSklad(), rz = cRez();
+      stan.forEach((s, i) => {
+        const $ = id => document.getElementById(`${id}-${i}`);
+        $('na').checked = s.na;
+        $('sklad').checked = s.sklad;
+        $('br').checked = s.br;
+        $('k').checked = s.k;
+
+        // blokady (żeby nie dało się przekroczyć limitów)
+        $('na').disabled = !s.na && rz >= MAX_REZ;                    // rezerwa pełna
+        $('sklad').disabled = s.sklad ? rz >= MAX_REZ                 // zdjęcie ze składu = nowy rezerwowy
+                                      : sk >= MAX_SKLAD;              // skład pełny
+        $('br').disabled = !s.br && !s.na && rz >= MAX_REZ;
+
+        const tr = document.getElementById(`row-${i}`);
+        tr.classList.toggle('is-sklad', s.na && s.sklad);
+        tr.classList.toggle('is-rez', s.na && !s.sklad);
       });
-      return c;
+
+      const bS = document.getElementById('badgeSklad');
+      bS.querySelector('.num').textContent = `${sk}/${MAX_SKLAD}`;
+      bS.className = 'badge ' + (sk === MAX_SKLAD ? 'full' : 'partial');
+
+      const bR = document.getElementById('badgeRez');
+      bR.querySelector('.num').textContent = `${rz}/${MAX_REZ}`;
+      bR.className = 'badge ' + (rz === MAX_REZ ? 'full' : '');
     }
 
-    function countBRInSklad() {
-      let c = 0;
-      zawodnicy.forEach((_, i) => {
-        if (document.getElementById(`sklad-${i}`).checked && document.getElementById(`br-${i}`).checked) c++;
-      });
-      return c;
+    // Czy zawodnik może dołączyć do protokołu (jako rezerwowy)?
+    function moznaDodac(i) {
+      return stan[i].na || cRez() < MAX_REZ;
     }
 
-    function updateWarnings() {
-      document.getElementById('warnSklad').style.display = countSklad() > 11 ? 'block' : 'none';
-      document.getElementById('warnBR').style.display = countBRInSklad() > 1 ? 'block' : 'none';
-    }
-
-    function onNaChange(i) {
-      if (!document.getElementById(`na-${i}`).checked) {
-        document.getElementById(`sklad-${i}`).checked = false;
-        document.getElementById(`br-${i}`).checked = false;
-        document.getElementById(`k-${i}`).checked = false;
+    function onNa(i, checked) {
+      const s = stan[i];
+      if (checked) {
+        if (!moznaDodac(i)) komunikat(`Rezerwowych może być maksymalnie ${MAX_REZ}.`);
+        else s.na = true;
+      } else {
+        s.na = s.sklad = s.br = s.k = false;
       }
-      updateWarnings();
+      odswiez();
     }
 
-    function onSkladChange(i) {
-      if (document.getElementById(`sklad-${i}`).checked) {
-        document.getElementById(`na-${i}`).checked = true;
-        // Max 11
-        if (countSklad() > 11) {
-          document.getElementById(`sklad-${i}`).checked = false;
-          alert('W składzie podstawowym może być maksymalnie 11 zawodników!');
+    function onSklad(i, checked) {
+      const s = stan[i];
+      if (checked) {
+        if (cSklad() >= MAX_SKLAD) {
+          komunikat(`Skład jest już pełny (${MAX_SKLAD}/${MAX_SKLAD}).`);
+        } else if (s.br && cBRSklad() >= 1) {
+          komunikat('W składzie może być tylko 1 bramkarz – ten zawodnik zostaje w rezerwie.');
+        } else {
+          s.na = true;
+          s.sklad = true;
         }
-        // Max 1 BR w składzie
-        if (document.getElementById(`br-${i}`).checked && countBRInSklad() > 1) {
-          document.getElementById(`br-${i}`).checked = false;
-          alert('W składzie podstawowym może być maksymalnie 1 bramkarz!');
-        }
+      } else {
+        // zdjęcie ze składu = przejście do rezerwowych
+        if (cRez() >= MAX_REZ) komunikat(`Lista rezerwowych jest pełna (${MAX_REZ}/${MAX_REZ}) – najpierw odznacz kogoś z rezerwy.`);
+        else s.sklad = false;
       }
-      updateWarnings();
+      odswiez();
     }
 
-    function onBRChange(i) {
-      if (document.getElementById(`br-${i}`).checked) {
-        document.getElementById(`na-${i}`).checked = true;
-        // Jeśli jest w składzie i już jest inny BR w składzie – odznacz tego
-        if (document.getElementById(`sklad-${i}`).checked && countBRInSklad() > 1) {
-          document.getElementById(`br-${i}`).checked = false;
-          alert('W składzie podstawowym może być maksymalnie 1 bramkarz!\nZostaw tego BR na rezerwie albo odznacz poprzedniego.');
-        }
+    function onBR(i, checked) {
+      const s = stan[i];
+      if (checked) {
+        if (!moznaDodac(i)) { komunikat(`Rezerwowych może być maksymalnie ${MAX_REZ}.`); }
+        else if (s.sklad && cBRSklad() >= 1) { komunikat('W składzie może być tylko 1 bramkarz.'); }
+        else { s.na = true; s.br = true; }
+      } else {
+        s.br = false;
       }
-      updateWarnings();
+      odswiez();
     }
 
-    function onKChange(i) {
-      const cb = document.getElementById(`k-${i}`);
-      if (cb.checked) {
-        zawodnicy.forEach((_, j) => {
-          if (j !== i) document.getElementById(`k-${j}`).checked = false;
-        });
-        document.getElementById(`na-${i}`).checked = true;
-      }
-      updateWarnings();
-    }
-
-    function zaznaczWszystkich(val) {
-      zawodnicy.forEach((_, i) => {
-        document.getElementById(`na-${i}`).checked = val;
-        if (!val) {
-          document.getElementById(`sklad-${i}`).checked = false;
-          document.getElementById(`br-${i}`).checked = false;
-          document.getElementById(`k-${i}`).checked = false;
+    function onK(i, checked) {
+      const s = stan[i];
+      if (checked) {
+        if (!moznaDodac(i)) { komunikat(`Rezerwowych może być maksymalnie ${MAX_REZ}.`); }
+        else {
+          stan.forEach(x => x.k = false);   // tylko jeden kapitan
+          s.na = true;
+          s.k = true;
         }
-      });
-      updateWarnings();
+      } else {
+        s.k = false;
+      }
+      odswiez();
+    }
+
+    function wyczyscWybor() {
+      stan.forEach(s => { s.na = s.sklad = s.br = s.k = false; });
+      odswiez();
     }
 
     function generujProtokol() {
-      if (countSklad() > 11) {
-        alert('Za dużo zawodników w składzie podstawowym (max 11)!');
+      const sk = cSklad();
+      if (sk !== MAX_SKLAD) {
+        alert(`W składzie podstawowym musi być dokładnie ${MAX_SKLAD} zawodników (teraz: ${sk}).`);
         return;
       }
-      if (countBRInSklad() > 1) {
+      if (cBRSklad() > 1) {
         alert('W składzie podstawowym może być tylko 1 bramkarz!');
+        return;
+      }
+      if (cRez() > MAX_REZ) {
+        alert(`Rezerwowych może być maksymalnie ${MAX_REZ}.`);
         return;
       }
 
@@ -612,69 +662,19 @@
 
       const sklad = [];
       const rezerwy = [];
-
       zawodnicy.forEach((z, i) => {
-        if (!document.getElementById(`na-${i}`).checked) return;
-
-        const isSklad = document.getElementById(`sklad-${i}`).checked;
-        const isBR = document.getElementById(`br-${i}`).checked;
-        const isK = document.getElementById(`k-${i}`).checked;
-
+        const s = stan[i];
+        if (!s.na) return;
         const flags = [];
-        if (isBR) flags.push('BR');
-        if (isK) flags.push('K');
-        const f = flags.join('/');
-
-        const player = { ...z, f };
-
-        if (isSklad) sklad.push(player);
-        else rezerwy.push(player);
+        if (s.br) flags.push('BR');
+        if (s.k) flags.push('K');
+        const player = { ...z, f: flags.join('/') };
+        (s.sklad ? sklad : rezerwy).push(player);
       });
 
-      // Skład – dokładnie max 11 wierszy (wypełnione + puste)
-      const skladBody = document.getElementById('p-sklad-body');
-      skladBody.innerHTML = '';
-      for (let i = 0; i < 11; i++) {
-        const z = sklad[i];
-        const tr = document.createElement('tr');
-        if (z) {
-          tr.innerHTML = `
-            <td class="col-f">${z.f}</td>
-            <td class="col-nr"></td>
-            <td class="col-name">${z.nazwisko} ${z.imie}</td>
-            <td class="col-dob">${z.dob}</td>
-            <td class="col-ilosc"></td>
-            <td class="col-min"></td>
-          `;
-        } else {
-          tr.className = 'empty-row';
-          tr.innerHTML = '<td></td><td></td><td></td><td></td><td></td><td></td>';
-        }
-        skladBody.appendChild(tr);
-      }
-
-      // Rezerwy – min 7 wierszy + bramki
-      const rezerwyBody = document.getElementById('p-rezerwy-body');
-      rezerwyBody.innerHTML = '';
-      const maxRez = Math.max(7, rezerwy.length);
-      for (let i = 0; i < maxRez; i++) {
-        const z = rezerwy[i];
-        const tr = document.createElement('tr');
-        if (z) {
-          tr.innerHTML = `
-            <td class="col-f">${z.f}</td>
-            <td class="col-nr"></td>
-            <td class="col-name">${z.nazwisko} ${z.imie}</td>
-            <td class="col-dob">${z.dob}</td>
-            <td class="col-ilosc"></td>
-            <td class="col-min"></td>
-          `;
-        } else {
-          tr.className = 'empty-row';
-          tr.innerHTML = '<td></td><td></td><td></td><td></td><td></td><td></td>';
-        }
-        rezerwyBody.appendChild(tr);
-      }
+      // Stała liczba wierszy: zawsze 11 w składzie i zawsze 9 rezerwowych
+      wypelnijTabele('p-sklad-body', sklad, MAX_SKLAD);
+      wypelnijTabele('p-rezerwy-body', rezerwy, MAX_REZ);
 
       // Staff
       const fixedFuncs = ['TRENER', 'II TRENER', 'KIEROWNIK', 'MASAŻYSTA'];
@@ -699,6 +699,30 @@
       document.getElementById('formularz').style.display = 'none';
       document.getElementById('protokol').style.display = 'block';
       window.scrollTo(0, 0);
+    }
+
+    // Wypełnia tbody dokładnie `liczbaWierszy` wierszami (zawodnicy + puste do uzupełnienia)
+    function wypelnijTabele(tbodyId, lista, liczbaWierszy) {
+      const body = document.getElementById(tbodyId);
+      body.innerHTML = '';
+      for (let i = 0; i < liczbaWierszy; i++) {
+        const z = lista[i];
+        const tr = document.createElement('tr');
+        if (z) {
+          tr.innerHTML = `
+            <td class="col-f">${z.f}</td>
+            <td class="col-nr"></td>
+            <td class="col-name">${z.nazwisko} ${z.imie}</td>
+            <td class="col-dob">${z.dob}</td>
+            <td class="col-ilosc"></td>
+            <td class="col-min"></td>
+          `;
+        } else {
+          tr.className = 'empty-row';
+          tr.innerHTML = '<td></td><td></td><td></td><td></td><td></td><td></td>';
+        }
+        body.appendChild(tr);
+      }
     }
 
     function wrocDoFormularza() {
